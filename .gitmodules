@@ -1,0 +1,3 @@
+[submodule "single_node_backends/cicada-engine"]
+	path = single_node_backends/cicada-engine
+	url = https://github.com/efficient/cicada-engine
