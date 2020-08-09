@@ -1,12 +1,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>  // struct tm 
+#include <string.h>
 
-//////////////////
-// Create Schema
-//////////////////
+//////////////////////
+// Schema Definition
+//////////////////////
 
-typedef struct
+typedef struct warehouse_t
 {
     int w_id;  // primary key; this field need to hold up to 2*W unique IDs
     char w_name[11];
@@ -28,9 +29,9 @@ typedef struct
 //  stringent limit on memory use? (__attribute__((packed)) may in fact slow down the program...)
 // What is a Neil field? No information about Neil field on Google
 
-typedef struct
+typedef struct district_t
 {  // 10 districts populated per warehouse
-	int8_t d_id; // 20 unique IDs
+    int8_t d_id; // 20 unique IDs
     int d_w_id;  // 2*W unique IDs
     char d_name[11];
     char d_street_1[21];
@@ -45,9 +46,9 @@ typedef struct
     // foreign key (D_W_ID) references WAREHOUSE(W_ID)
 } __attribute__((packed)) district_t;
 
-typedef struct
+typedef struct customer_t
 {  // 3000 customers populated per district
-	int c_id;  // 96,000 unique IDs
+    int c_id;  // 96,000 unique IDs
     int8_t c_d_id;  // 20 unique IDs
     int c_w_id;  // 2*W unique IDs
     char c_first[17];  // varchar(16)
@@ -69,97 +70,93 @@ typedef struct
     uint16_t c_delivery_cnt;  // numeric(4) unsigned
     char c_data[501];  // miscellaneous information
     // primary key (C_W_ID, C_D_ID, C_ID),
-	// foreign key (C_W_ID, C_D_ID) references DISTRICT(D_W_ID, D_ID)
+    // foreign key (C_W_ID, C_D_ID) references DISTRICT(D_W_ID, D_ID)
 } __attribute__((packed)) customer_t;
 
-typedef struct
+typedef struct history_t
 {
-	int h_c_id; // 96,000 unique IDs
-	int8_t h_c_d_id;  // 20 unique IDs
-	int h_c_w_id;  // 2*W unique IDs
-	int8_t h_d_id;  // 20 unique IDs
-	int h_w_id;  // 2*W unique IDs
-	struct tm* h_date;
-	float h_amount;  // numeric(6, 2)
-	char h_data[25];  // Miscellaneous information
+    int h_c_id; // 96,000 unique IDs
+    int8_t h_c_d_id;  // 20 unique IDs
+    int h_c_w_id;  // 2*W unique IDs
+    int8_t h_d_id;  // 20 unique IDs
+    int h_w_id;  // 2*W unique IDs
+    struct tm* h_date;
+    float h_amount;  // numeric(6, 2)
+    char h_data[25];  // Miscellaneous information
     // foreign key (H_C_W_ID, H_C_D_ID, H_C_ID) references CUSTOMER(C_W_ID, C_D_ID, C_ID),
     // foreign key (H_W_ID, H_D_ID) references DISTRICT(D_W_ID, D_ID)
 } __attribute__((packed)) history_t;
 // The TPC-C application does not have to be capable of utilizing the
 //  increased range of C_ID values beyond 6,000.
 
-typedef struct
+typedef struct order_t
 {
-	int o_id; // 10,000,000 unique IDs
-	int8_t o_d_id;  // 20 unique IDs
-	int o_w_id;  // 2*W unique IDs
-	int o_c_id;  // 96,000 unique IDs
+    int o_id; // 10,000,000 unique IDs
+    int8_t o_d_id;  // 20 unique IDs
+    int o_w_id;  // 2*W unique IDs
+    int o_c_id;  // 96,000 unique IDs
     struct tm* o_entry_d;
-	int o_carrier_id; // 10 unique IDs or -1 (denotes null)
-	uint8_t o_ol_cnt; // numeric(2); Count of Order-Lines
-	uint8_t o_all_local; // numeric(1)
-	// primary key (O_W_ID, O_D_ID, O_ID),
-	// foreign key (O_W_ID, O_D_ID, O_C_ID) references CUSTOMER(C_W_ID, C_D_ID, C_ID)
+    int o_carrier_id; // 10 unique IDs or -1 (denotes null)
+    uint8_t o_ol_cnt; // numeric(2); Count of Order-Lines
+    uint8_t o_all_local; // numeric(1)
+    // primary key (O_W_ID, O_D_ID, O_ID),
+    // foreign key (O_W_ID, O_D_ID, O_C_ID) references CUSTOMER(C_W_ID, C_D_ID, C_ID)
 } __attribute__((packed)) order_t;
 
-typedef struct
+typedef struct neworder_t
 {
-	int no_o_id;  // 10,000,000 unique IDs
-	int8_t no_d_id;  // 20 unique IDs
-	int no_w_id;  // 2*W unique IDs
+    int no_o_id;  // 10,000,000 unique IDs
+    int8_t no_d_id;  // 20 unique IDs
+    int no_w_id;  // 2*W unique IDs
     // primary key (NO_W_ID, NO_D_ID, NO_O_ID),
-	// foreign key (NO_W_ID, NO_D_ID, NO_O_ID) references ORDERtable(O_W_ID, O_D_ID, O_ID)
+    // foreign key (NO_W_ID, NO_D_ID, NO_O_ID) references ORDERtable(O_W_ID, O_D_ID, O_ID)
 } __attribute__((packed)) neworder_t;
 
-typedef struct
+typedef struct item_t
 {  // 100,000 items are populated (constant)
-	int i_id;  // primary key; 200,000 unique IDs
-	int i_im_id;  // 200,000 unique IDs; Image ID associated to Item
-	char i_name[25];  // varchar(24)
-	float i_price;
-	char i_data[51];  // Brand information
+    int i_id;  // primary key; 200,000 unique IDs
+    int i_im_id;  // 200,000 unique IDs; Image ID associated to Item
+    char i_name[25];  // varchar(24)
+    float i_price;
+    char i_data[51];  // Brand information
 } __attribute__((packed)) item_t;
 
-typedef struct
+typedef struct stock_t
 {  // 100,000 populated per warehouse
-	int s_i_id;  // 200,000 unique IDs
-	int s_w_id;  // 2*W unique IDs
-	int s_quantity;  // numeric(4) signed
-	char s_dist[10][25]; // S_DIST_01 char(24), S_DIST_02 char(24), ..., S_DIST_10 char(24)
-	uint32_t s_ytd;  // numeric(8)
-	uint16_t s_order_cnt;  // numeric(4)
-	uint16_t s_remote_cnt;  // numeric(4)
-	char s_data[51];  // Make information
+    int s_i_id;  // 200,000 unique IDs
+    int s_w_id;  // 2*W unique IDs
+    int s_quantity;  // numeric(4) signed
+    char s_dist[10][25]; // S_DIST_01 char(24), S_DIST_02 char(24), ..., S_DIST_10 char(24)
+    uint32_t s_ytd;  // numeric(8)
+    uint16_t s_order_cnt;  // numeric(4)
+    uint16_t s_remote_cnt;  // numeric(4)
+    char s_data[51];  // Make information
     // primary key (S_W_ID, S_I_ID),
-	// foreign key (S_W_ID) references WAREHOUSE(W_ID),
-	// foreign key (S_I_ID) references ITEM(I_ID)
+    // foreign key (S_W_ID) references WAREHOUSE(W_ID),
+    // foreign key (S_I_ID) references ITEM(I_ID)
 } __attribute__((packed)) stock_t;
 
-typedef struct
+typedef struct orderline_t
 {
-	int ol_o_id;  // 10,000,000 unique IDs
-	int8_t ol_d_id;  // 20 unique IDs
-	int ol_w_id;  // 2*W unique IDs
-	int8_t ol_number;  // 15 unique IDs
-	int ol_i_id;  // 200,000 unique IDs
-	int ol_supply_w_id;  // 2*W unique IDs
-	struct tm* ol_delivery_d;  // datetime or null
-	uint8_t ol_quantity;  // numeric(2)
-	float ol_amount;  // numeric(6, 2) signed
-	char ol_dist_info[25];  // char(24)
-	// primary key (OL_W_ID, OL_D_ID, OL_O_ID, OL_NUMBER),
-	// foreign key (OL_W_ID, OL_D_ID, OL_O_ID) references ORDERtable(O_W_ID, O_D_ID, O_ID),
-	// foreign key (OL_SUPPLY_W_ID, OL_I_ID) references STOCK(S_W_ID, S_I_ID)
+    int ol_o_id;  // 10,000,000 unique IDs
+    int8_t ol_d_id;  // 20 unique IDs
+    int ol_w_id;  // 2*W unique IDs
+    int8_t ol_number;  // 15 unique IDs
+    int ol_i_id;  // 200,000 unique IDs
+    int ol_supply_w_id;  // 2*W unique IDs
+    struct tm* ol_delivery_d;  // datetime or null
+    uint8_t ol_quantity;  // numeric(2)
+    float ol_amount;  // numeric(6, 2) signed
+    char ol_dist_info[25];  // char(24)
+    // primary key (OL_W_ID, OL_D_ID, OL_O_ID, OL_NUMBER),
+    // foreign key (OL_W_ID, OL_D_ID, OL_O_ID) references ORDERtable(O_W_ID, O_D_ID, O_ID),
+    // foreign key (OL_SUPPLY_W_ID, OL_I_ID) references STOCK(S_W_ID, S_I_ID)
 } __attribute__((packed)) orderline_t;
 
-////////////////////////
-// Database Population
-////////////////////////
+/////////////////////////////////
+// Data Generation & Population
+/////////////////////////////////
 
-int Random(int l, int r);
-struct tm cur_local_time();
-void swap(int* a, int* b);
-int nurand(int A, int x, int y);
 void initialize_and_permute_random(int* permutation, int n);
 int gen_rand_astr(char* str, int lenl, int lenh);
 void gen_rand_nstr(char* str, int len);
@@ -171,20 +168,106 @@ void init_db_population(const int n_warehouse);
 
 inline int Random(int l, int r)  // uniform, inclusive
 {
-	// ??? How to implement this function? (See the comments below)
-	if (r - l > RAND_MAX) return rand() / (double)RAND_MAX * (r-l) + l;
-	// Due to the discrete nature of floating-point numbers, this may mean that
-	//  some values will just never show up in your output stream.
-	// In C++11 we can use the std::default_random_engine library to solve this problem,
-	//  but not in C
+    // ??? How to implement this function? (See the comments below)
+    if (r - l > RAND_MAX) return rand() / (double)RAND_MAX * (r-l) + l;
+    // Due to the discrete nature of floating-point numbers, this may mean that
+    //  some values will just never show up in your output stream.
+    // In C++11 we can use the std::default_random_engine library to solve this problem,
+    //  but not in C
     else return rand() % (r-l+1) + l;
-	// So I use another way (as above) when r - l <= RAND_MAX, but this is also problematic 
-	//  because the result is not uniformly distributed when RAND_MAX % (r-l+1) != 0.
-	// Maybe we shall choose "the lesser of two evils"
+    // So I use another way (as above) when r - l <= RAND_MAX, but this is also problematic 
+    //  because the result is not uniformly distributed when RAND_MAX % (r-l+1) != 0.
+    // Maybe we shall choose "the lesser of two evils"
 }
 inline struct tm cur_local_time()
 {
-	time_t cur_time = time(NULL);
-	return *localtime(&cur_time);
+    time_t cur_time = time(NULL);
+    return *localtime(&cur_time);
 }
 inline void swap(int* a, int* b) { int t = *a; *a = *b; *b = t; }
+inline int nurand(int A, int x, int y)
+// non-uniform random over range [x, y]
+// A is a constant chosen according to the size of the range [x .. y]
+//   for C_LAST, the range is [0 .. 999] and  A = 255
+//   for C_ID, the range is [1 .. 3000] and  A = 1023
+//   for OL_I_ID, the range is [1 .. 100000] and A = 8191
+{
+    // const int a[3] = {255, 1023, 8191}, A = a[aa];
+
+    int C = Random(0, A);
+    // C is a run-time constant randomly chosen within [0 .. A] that
+    //  can be varied without altering performance. The same C value,
+    //  per field (C_LAST, C_ID, OL_I_ID), must be used by all emulated terminals.
+    // ??? How to calculate C? Recalculate once per call to NURand(), or just one initial call at the beginning?
+
+    return (((Random(0, A) | Random(x, y)) + C) % (y - x + 1)) + x;
+}
+
+////////////////////////
+// Database Operations
+////////////////////////
+
+inline void Insert(tx_trans_t* trans, char* key, void* val)
+{
+    tx_trans_kv_set(trans, key, strlen(key), val, sizeof(val));
+}
+inline void Select(tx_trans_t* trans, char* key, void** val)
+{
+    tx_trans_kv_get(trans, key, strlen(key), val);
+}
+inline void Delete(tx_trans_t* trans, char* key)
+{
+    tx_trans_kv_del(trans, key, sizeof(key));
+}
+
+extern const int prikey_len_warehouse;
+extern const int prikey_len_district;
+extern const int prikey_len_customer;
+extern const int prikey_len_item;
+extern const int prikey_len_order;
+extern const int prikey_len_orderline;
+extern const int prikey_len_stock;
+extern const int prikey_len_neworder;
+extern const int prikey_len_history;
+
+void Get_prikey_warehouse(char* pri_key, int w_id);
+void Get_prikey_district (char* pri_key, int d_w_id, int d_id);
+void Get_prikey_customer (char* pri_key, int c_w_id, int c_d_id, int c_id);
+void Get_prikey_item     (char* pri_key, int i_id);
+void Get_prikey_order    (char* pri_key, int o_w_id, int o_d_id, int o_id);
+void Get_prikey_orderline(char* pri_key, int ol_w_id, int ol_d_id, int ol_o_id, int ol_number);
+void Get_prikey_stock    (char* pri_key, int s_w_id, int s_i_id);
+void Get_prikey_neworder (char* pri_key, int no_w_id, int no_d_id, int no_o_id);
+void Get_prikey_history  (char* pri_key, int h_w_id, int h_d_id, int h_c_id);
+
+void Select_warehouse(tx_trans_t* trans, int w_id, warehouse_t** w);
+void Select_district (tx_trans_t* trans, int d_w_id, int d_id, district_t** d);
+void Select_customer (tx_trans_t* trans, int c_w_id, int c_d_id, int c_id, customer_t** c);
+void Select_item     (tx_trans_t* trans, int i_id, item_t** i);
+void Select_order    (tx_trans_t* trans, int o_w_id, int o_d_id, int o_id, order_t** o);
+void Select_orderline(tx_trans_t* trans, int ol_w_id, int ol_d_id, int ol_o_id, int ol_number, orderline_t** ol);
+void Select_stock    (tx_trans_t* trans, int s_w_id, int s_i_id, stock_t** s);
+void Select_neworder (tx_trans_t* trans, int no_w_id, int no_d_id, int no_o_id, neworder_t** no);
+void Select_history  (tx_trans_t* trans, int h_w_id, int h_d_id, int h_c_id, history_t** h);
+
+void Insert_warehouse(tx_trans_t* trans, warehouse_t* w);
+void Insert_district (tx_trans_t* trans, district_t* d);
+void Insert_customer (tx_trans_t* trans, customer_t* c);
+void Insert_item     (tx_trans_t* trans, item_t* i);
+void Insert_order    (tx_trans_t* trans, order_t* o);
+void Insert_orderline(tx_trans_t* trans, orderline_t* ol);
+void Insert_stock    (tx_trans_t* trans, stock_t* s);
+void Insert_neworder (tx_trans_t* trans, neworder_t* no);
+void Insert_history  (tx_trans_t* trans, history_t* h);
+
+void Insert_warehouse_trans(tx_ctx_t* ctx, warehouse_t* w);
+void Insert_district_trans (tx_ctx_t* ctx, district_t* d);
+void Insert_customer_trans (tx_ctx_t* ctx, customer_t* c);
+void Insert_item_trans     (tx_ctx_t* ctx, item_t* i);
+void Insert_order_trans    (tx_ctx_t* ctx, order_t* o);
+void Insert_orderline_trans(tx_ctx_t* ctx, orderline_t* ol);
+void Insert_stock_trans    (tx_ctx_t* ctx, stock_t* s);
+void Insert_neworder_trans (tx_ctx_t* ctx, neworder_t* no);
+void Insert_history_trans  (tx_ctx_t* ctx, history_t* h);
+
+void Delete_neworder(tx_trans_t* trans, neworder_t* no);
