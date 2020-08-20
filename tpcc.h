@@ -166,7 +166,7 @@ void gen_rand_zip(char* zipcode);
 
 void init_db_population(const int n_warehouse);
 
-inline int Random(int l, int r)  // uniform, inclusive
+static inline int Random(int l, int r)  // uniform, inclusive
 {
     // ??? How to implement this function? (See the comments below)
     if (r - l > RAND_MAX) return rand() / (double)RAND_MAX * (r-l) + l;
@@ -179,13 +179,13 @@ inline int Random(int l, int r)  // uniform, inclusive
     //  because the result is not uniformly distributed when RAND_MAX % (r-l+1) != 0.
     // Maybe we shall choose "the lesser of two evils"
 }
-inline struct tm cur_local_time()
+static inline struct tm cur_local_time()
 {
     time_t cur_time = time(NULL);
     return *localtime(&cur_time);
 }
-inline void swap(int* a, int* b) { int t = *a; *a = *b; *b = t; }
-inline int nurand(int A, int x, int y)
+static inline void swap(int* a, int* b) { int t = *a; *a = *b; *b = t; }
+static inline int nurand(int A, int x, int y)
 // non-uniform random over range [x, y]
 // A is a constant chosen according to the size of the range [x .. y]
 //   for C_LAST, the range is [0 .. 999] and  A = 255
@@ -207,18 +207,9 @@ inline int nurand(int A, int x, int y)
 // Database Operations
 ////////////////////////
 
-inline void Insert(tx_trans_t* trans, char* key, void* val)
-{
-    tx_trans_kv_set(trans, key, strlen(key), val, sizeof(val));
-}
-inline void Select(tx_trans_t* trans, char* key, void** val)
-{
-    tx_trans_kv_get(trans, key, strlen(key), val);
-}
-inline void Delete(tx_trans_t* trans, char* key)
-{
-    tx_trans_kv_del(trans, key, sizeof(key));
-}
+extern inline void Insert(tx_trans_t* trans, char* key, void* val);
+extern inline void Select(tx_trans_t* trans, char* key, void** val);
+extern inline void Delete(tx_trans_t* trans, char* key);
 
 extern const int prikey_len_warehouse;
 extern const int prikey_len_district;
@@ -229,26 +220,35 @@ extern const int prikey_len_orderline;
 extern const int prikey_len_stock;
 extern const int prikey_len_neworder;
 extern const int prikey_len_history;
+extern const int prikey_len_c2;
+extern const int prikey_len_o2;
+extern const int prikey_len_no2;
 
-void Get_prikey_warehouse(char* pri_key, int w_id);
-void Get_prikey_district (char* pri_key, int d_w_id, int d_id);
-void Get_prikey_customer (char* pri_key, int c_w_id, int c_d_id, int c_id);
-void Get_prikey_item     (char* pri_key, int i_id);
-void Get_prikey_order    (char* pri_key, int o_w_id, int o_d_id, int o_id);
-void Get_prikey_orderline(char* pri_key, int ol_w_id, int ol_d_id, int ol_o_id, int ol_number);
-void Get_prikey_stock    (char* pri_key, int s_w_id, int s_i_id);
-void Get_prikey_neworder (char* pri_key, int no_w_id, int no_d_id, int no_o_id);
-void Get_prikey_history  (char* pri_key, int h_w_id, int h_d_id, int h_c_id);
+extern inline void Get_prikey_warehouse(char* pri_key, int w_id);
+extern inline void Get_prikey_district (char* pri_key, int d_w_id, int d_id);
+extern inline void Get_prikey_customer (char* pri_key, int c_w_id, int c_d_id, int c_id);
+extern inline void Get_prikey_item     (char* pri_key, int i_id);
+extern inline void Get_prikey_order    (char* pri_key, int o_w_id, int o_d_id, int o_id);
+extern inline void Get_prikey_orderline(char* pri_key, int ol_w_id, int ol_d_id, int ol_o_id, int ol_number);
+extern inline void Get_prikey_stock    (char* pri_key, int s_w_id, int s_i_id);
+extern inline void Get_prikey_neworder (char* pri_key, int no_w_id, int no_d_id, int no_o_id);
+extern inline void Get_prikey_history  (char* pri_key, int h_w_id, int h_d_id, int h_c_id);
+extern inline void Get_prikey_c2       (char* pri_key, int c_w_id, int c_d_id, char* c_last);
+extern inline void Get_prikey_o2       (char* pri_key, int o_w_id, int o_d_id, int o_c_id);
+extern inline void Get_prikey_no2      (char* pri_key, int no_w_id, int no_d_id);
 
-void Select_warehouse(tx_trans_t* trans, int w_id, warehouse_t** w);
-void Select_district (tx_trans_t* trans, int d_w_id, int d_id, district_t** d);
-void Select_customer (tx_trans_t* trans, int c_w_id, int c_d_id, int c_id, customer_t** c);
-void Select_item     (tx_trans_t* trans, int i_id, item_t** i);
-void Select_order    (tx_trans_t* trans, int o_w_id, int o_d_id, int o_id, order_t** o);
-void Select_orderline(tx_trans_t* trans, int ol_w_id, int ol_d_id, int ol_o_id, int ol_number, orderline_t** ol);
-void Select_stock    (tx_trans_t* trans, int s_w_id, int s_i_id, stock_t** s);
-void Select_neworder (tx_trans_t* trans, int no_w_id, int no_d_id, int no_o_id, neworder_t** no);
-void Select_history  (tx_trans_t* trans, int h_w_id, int h_d_id, int h_c_id, history_t** h);
+void Select_warehouse           (tx_trans_t* trans, int w_id, warehouse_t** w);
+void Select_district            (tx_trans_t* trans, int d_w_id, int d_id, district_t** d);
+void Select_customer            (tx_trans_t* trans, int c_w_id, int c_d_id, int c_id, customer_t** c);
+void Select_item                (tx_trans_t* trans, int i_id, item_t** i);
+void Select_order               (tx_trans_t* trans, int o_w_id, int o_d_id, int o_id, order_t** o);
+void Select_orderline           (tx_trans_t* trans, int ol_w_id, int ol_d_id, int ol_o_id, int ol_number, orderline_t** ol);
+void Select_stock               (tx_trans_t* trans, int s_w_id, int s_i_id, stock_t** s);
+void Select_neworder            (tx_trans_t* trans, int no_w_id, int no_d_id, int no_o_id, neworder_t** no);
+void Select_history             (tx_trans_t* trans, int h_w_id, int h_d_id, int h_c_id, history_t** h);
+void Select_customer_byname     (tx_trans_t* trans, int c_w_id, int c_d_id, char* c_last, customer_t** c);
+void Select_latest_order        (tx_trans_t* trans, int o_w_id, int o_d_id, int o_c_id, order_t** o);
+void Select_undelivered_neworder(tx_trans_t* trans, int no_w_id, int no_d_id, neworder_t** no);
 
 void Insert_warehouse(tx_trans_t* trans, warehouse_t* w);
 void Insert_district (tx_trans_t* trans, district_t* d);

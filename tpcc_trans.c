@@ -12,7 +12,7 @@
 static FILE* fp;
 static FILE* delivery_tx_result_fp;
 
-inline char* asc_local_time(void)
+static inline char* asc_local_time(void)
 {
     time_t* cur_time = new(time_t); time(cur_time);
     return asctime(localtime(cur_time));
@@ -61,6 +61,8 @@ void trans_new_order(tx_ctx_t* ctx)
     //  reflect the creation of the new order. O_CARRIER_ID is set to a null value.
     // If the order includes only home order-lines, then O_ALL_LOCAL is set to 1,
     //  otherwise O_ALL_LOCAL is set to 0.
+
+    d->d_next_o_id++; Insert_district(trans, d);
     
     o->o_ol_cnt = ol_cnt;
     // From specification: The number of items, O_OL_CNT, is computed to match ol_cnt.
@@ -159,13 +161,14 @@ void trans_payment(tx_ctx_t* ctx)
     
     customer_t* c;
     int c_id;
+    char c_last[17];
     if (byname == 2)
     {
-        // TODO1: find customers by last name (secondary index queries)
-
+        fscanf(fp, "%s", c_last);
+        Select_customer_byname(trans, c_w_id, c_d_id, c_last, &c);
+        c_id = c->c_id;
     }
-    else
-    {
+    else {
         fscanf(fp, "%d", &c_id);
         Select_customer(trans, c_w_id, c_d_id, c_id, &c);
     }
@@ -205,27 +208,25 @@ void trans_order_status(tx_ctx_t* ctx)
     tx_trans_t* trans = tx_trans_create(ctx);  tx_trans_init(ctx, trans);
 
     customer_t* c;
+    char c_last[17];
     int c_id = 0;
     if (byname == 2)
     {
-        // TODO1: find customers by last name
-
+        fscanf(fp, "%s", c_last);
+        Select_customer_byname(trans, c_last, w_id, d_id, &c);
+        c_id = c->c_id;
     }
     else {
         fscanf(fp, "%d", &c_id);
         Select_customer(trans, w_id, d_id, c_id, &c);
     }
     
-    int o_id, o_carrier_id;
-    struct tm o_entry_d;
-    // The row in the ORDER table with matching O_W_ID (equals C_W_ID), O_D_ID (equals C_D_ID), O_C_ID
-    //  (equals C_ID), and with **the largest existing** O_ID, is selected. This is the most recent order placed by that
-    //  customer. O_ID, O_ENTRY_D, and O_CARRIER_ID are retrieved.
-    // TODO2 (may require range queries)
+    order_t* o;
+    Select_latest_order(trans, w_id, d_id, c_id, &o);
 
     for (int k = 0; k < 15; k++)
     {
-        orderline_t* ol; Select_orderline(trans, w_id, d_id, o_id, k, &ol);
+        orderline_t* ol; Select_orderline(trans, w_id, d_id, o->o_id, k, &ol);
         if (ol == NULL) break;  // end of orderlines in this order
     }
     
@@ -257,16 +258,14 @@ int trans_delivery(tx_ctx_t* ctx, time_t created_time, int w_id, int o_carrier_i
     {
         tx_trans_init(ctx, trans);
         
-        neworder_t* no;
-        // TODO2: The row in the NEW-ORDER table with matching NO_W_ID (equals W_ID) and NO_D_ID (equals D_ID)
-        //  and with **the lowest** NO_O_ID value is selected. (range queries)
+        neworder_t* no; Select_undelivered_neworder(trans, w_id, d_id, &no);
+        // This select function can be optimized: we only need no_o_id
         if (no == NULL)
         {
-            tx_trans_commit(trans);  // ??? Didn't do anything in this tx, should we commit?
+            tx_trans_commit(trans);  // ??? Didn't do anything in this tx, should we commit or abort?
             num_skipped++;
             continue;
         }
-
         Delete_neworder(trans, no);
 
         order_t* o; Select_order(trans, w_id, d_id, no->no_o_id, &o);
@@ -275,10 +274,18 @@ int trans_delivery(tx_ctx_t* ctx, time_t created_time, int w_id, int o_carrier_i
 
         struct tm cur_time = cur_local_time();
         float o_ol_amount = 0;
-        // TODO1:
-        // All rows in the ORDER-LINE table with matching OL_W_ID (equals O_W_ID), OL_D_ID (equals O_D_ID),
-        //  and OL_O_ID (equals O_ID) are selected. All OL_DELIVERY_D, the delivery dates, are updated to the
-        //  current system time as returned by the operating system and the sum of all OL_AMOUNT is retrieved.
+        for (int k = 0; k < 15; k++)
+        {
+            orderline_t* ol; Select_orderline(trans, w_id, d_id, no->no_o_id, k, &ol);
+            if (ol == NULL) break;  // end of orderlines in this order
+            ol->ol_delivery_d = new(struct tm); *ol->ol_delivery_d = cur_time;  // must be NULL before
+            Insert_orderline(trans, ol);
+        }
+        // The sum of all OL_AMOUNT is retrieved. (Omit)
+        //  EXEC SQL SELECT SUM(ol_amount) INTO :ol_total
+        //  FROM order_lie
+        //  WHERE ol_o_id = :no_o_id AND ol_d_id = :d_id
+        //  AND ol_w_id = :w_id;
 
         customer_t* c; Select_customer(trans, w_id, d_id, o->o_c_id, &c);
         c->c_balance += o_ol_amount;
@@ -288,23 +295,6 @@ int trans_delivery(tx_ctx_t* ctx, time_t created_time, int w_id, int o_carrier_i
         tx_trans_commit(trans);
         fprintf(delivery_tx_result_fp, " D: %d, O: %d\n", d_id, o->o_id);
     }
-
-    // for (d_id=1; d_id<=DIST_PER_WARE; d_id++)
-    // {
-    // EXEC SQL DECLARE c_no CURSOR FOR
-    // SELECT no_o_id
-    // FROM new_order
-    // WHERE no_d_id = :d_id AND no_w_id = :w_id
-    // ORDER BY no_o_id ASC;
-
-    // EXEC SQL UPDATE order_line SET ol_delivery_d = :datetime
-    // WHERE ol_o_id = :no_o_id AND ol_d_id = :d_id AND
-    // ol_w_id = :w_id;
-    // EXEC SQL SELECT SUM(ol_amount) INTO :ol_total
-    // FROM order_line
-    // WHERE ol_o_id = :no_o_id AND ol_d_id = :d_id
-    // AND ol_w_id = :w_id;
-    // }
 
     tx_trans_destroy(trans);
     fprintf(delivery_tx_result_fp, "Delivery tx completed time: %s\n", asc_local_time());
@@ -317,8 +307,23 @@ void trans_stock_level(tx_ctx_t* ctx)
     tx_trans_t* trans = tx_trans_create(ctx);  tx_trans_init(ctx, trans);
 
     district_t* d; Select_district(trans, w_id, d_id, &d);
+    int d_next_o_id = d -> d_next_o_id;
 
-    // TODO2 (require range queries)
+    // EXEC SQL SELECT COUNT(DISTINCT (s_i_id)) INTO :stock_count
+    // FROM order_line, stock
+    // WHERE ol_w_id=:w_id AND
+    // ol_d_id=:d_id AND ol_o_id<:o_id AND
+    // ol_o_id>=:o_id-20 AND s_w_id=:w_id AND
+    // s_i_id=ol_i_id AND s_quantity < :threshold;
+    int cnt_low_stock = 0;
+    for (int o_id = d_next_o_id - 20; o_id < d_next_o_id; o_id++)
+        for (int ol_number = 0; ol_number < 15; ol_number++)
+        {
+            orderline_t* ol; Select_orderline(trans, w_id, d_id, o_id, ol_number, &ol);
+            // TODO: record **distinct** ol_i_id
+            stock_t* s; Select_stock(trans, w_id, ol->ol_i_id, &s);
+            if (s -> s_quantity < threshold) cnt_low_stock++;
+        }
 
     tx_trans_commit(trans);  tx_trans_destroy(trans);
 }

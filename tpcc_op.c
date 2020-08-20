@@ -1,6 +1,7 @@
 #include "tx_shim.h"
 #include "tpcc.h"
 #include <stdio.h>
+#define new(T) malloc(sizeof(T))
 
 const int prikey_len_warehouse = 11;  // With 1 bit padding
 const int prikey_len_district  = 14;
@@ -11,42 +12,70 @@ const int prikey_len_orderline = 23;
 const int prikey_len_stock     = 19;
 const int prikey_len_neworder  = 20;
 const int prikey_len_history   = 19;
+const int prikey_len_c2        = 31;
+const int prikey_len_o2        = 20;
+const int prikey_len_no2       = 16;
 
-void Get_prikey_warehouse(char* pri_key, int w_id)
+inline void Insert(tx_trans_t* trans, char* key, void* val)
+{
+    tx_trans_kv_set(trans, key, strlen(key), val, sizeof(val));
+}
+inline void Select(tx_trans_t* trans, char* key, void** val)
+{
+    tx_trans_kv_get(trans, key, strlen(key), val);
+}
+inline void Delete(tx_trans_t* trans, char* key)
+{
+    tx_trans_kv_del(trans, key, sizeof(key));
+}
+
+inline void Get_prikey_warehouse(char* pri_key, int w_id)
 {
     sprintf(pri_key, "w%d", w_id);
 }
-void Get_prikey_district(char* pri_key, int d_w_id, int d_id)
+inline void Get_prikey_district(char* pri_key, int d_w_id, int d_id)
 {
     sprintf(pri_key, "d%d,%d", d_w_id, d_id);
 }
-void Get_prikey_customer(char* pri_key, int c_w_id, int c_d_id, int c_id)
+inline void Get_prikey_customer(char* pri_key, int c_w_id, int c_d_id, int c_id)
 {
     sprintf(pri_key, "c%d,%d,%d", c_w_id, c_d_id, c_id);
 }
-void Get_prikey_item(char* pri_key, int i_id)
+inline void Get_prikey_item(char* pri_key, int i_id)
 {
     sprintf(pri_key, "i%d", i_id);
 }
-void Get_prikey_order(char* pri_key, int o_w_id, int o_d_id, int o_id)
+inline void Get_prikey_order(char* pri_key, int o_w_id, int o_d_id, int o_id)
 {
     sprintf(pri_key, "o%d,%d,%d", o_w_id, o_d_id, o_id);
 }
-void Get_prikey_orderline(char* pri_key, int ol_w_id, int ol_d_id, int ol_o_id, int ol_number)
+inline void Get_prikey_orderline(char* pri_key, int ol_w_id, int ol_d_id, int ol_o_id, int ol_number)
 {
     sprintf(pri_key, "ol%d,%d,%d,%d", ol_w_id, ol_d_id, ol_o_id, ol_number);
 }
-void Get_prikey_stock(char* pri_key, int s_w_id, int s_i_id)
+inline void Get_prikey_stock(char* pri_key, int s_w_id, int s_i_id)
 {
     sprintf(pri_key, "s%d,%d", s_w_id, s_i_id);
 }
-void Get_prikey_neworder(char* pri_key, int no_w_id, int no_d_id, int no_o_id)
+inline void Get_prikey_neworder(char* pri_key, int no_w_id, int no_d_id, int no_o_id)
 {
     sprintf(pri_key, "no%d,%d,%d", no_w_id, no_d_id, no_o_id);
 }
-void Get_prikey_history(char* pri_key, int h_w_id, int h_d_id, int h_c_id)
+inline void Get_prikey_history(char* pri_key, int h_w_id, int h_d_id, int h_c_id)
 {
     sprintf(pri_key, "h%d,%d,%d", h_w_id, h_d_id, h_c_id);
+}
+inline void Get_prikey_c2(char* pri_key, int c_w_id, int c_d_id, char* c_last)
+{
+    sprintf(pri_key, "c2%d,%d,%s", c_w_id, c_d_id, c_last);
+}
+inline void Get_prikey_o2(char* pri_key, int o_w_id, int o_d_id, int o_c_id)
+{
+    sprintf(pri_key, "o2%d,%d,%d", o_w_id, o_d_id, o_c_id);
+}
+inline void Get_prikey_no2(char* pri_key, int no_w_id, int no_d_id)
+{
+    sprintf(pri_key, "no2%d,%d", no_w_id, no_d_id);
 }
 
 void Select_warehouse(tx_trans_t* trans, int w_id, warehouse_t** w)
@@ -103,14 +132,32 @@ void Select_history(tx_trans_t* trans, int h_w_id, int h_d_id, int h_c_id, histo
     Get_prikey_history(h_pri_key, h_w_id, h_d_id, h_c_id);
     Select(trans, h_pri_key, (void**)h);
 }
+void Select_customer_byname(tx_trans_t* trans, int c_w_id, int c_d_id, char* c_last, customer_t** c)
+{
+    int* c_id;
+    char c2_key[prikey_len_c2];
+    Get_prikey_c2(c2_key, c_w_id, c_d_id, c_last);
+    Select(trans, c2_key, &c_id);
+    Select_customer(trans, c_w_id, c_d_id, *c_id, c);
+}
+void Select_latest_order(tx_trans_t* trans, int o_w_id, int o_d_id, int o_c_id, order_t** o)
+{
+    int* largest_o_id;
+    char o2_key[prikey_len_o2];
+    Get_prikey_o2(o2_key, o_w_id, o_d_id, o_c_id);
+    Select(trans, o2_key, &largest_o_id);
+    Select_order(trans, o_w_id, o_d_id, *largest_o_id, o);
+}
+void Select_undelivered_neworder(tx_trans_t* trans, int no_w_id, int no_d_id, neworder_t** no)
+{
+    int* min_no_o_id;
+    char no2_key[prikey_len_no2];
+    Get_prikey_no2(no2_key, no_w_id, no_d_id);
+    Select(trans, no2_key, &min_no_o_id);
+    Select_neworder(trans, no_w_id, no_d_id, *min_no_o_id, no);
+}
 
 // Also used as update (temporarily)
-#define Insert_T(trans, p) \
-    {\
-        char pri_key[prikey_len_T];\
-        Get_prikey_ptr_T(pri_key, p);\
-        Insert(trans, pri_key, p);\
-    }
 void Insert_warehouse(tx_trans_t* trans, warehouse_t* w)
 {
     char w_pri_key[prikey_len_warehouse];
@@ -128,6 +175,11 @@ void Insert_customer(tx_trans_t* trans, customer_t* c)
     char c_pri_key[prikey_len_customer];
     Get_prikey_customer(c_pri_key, c->c_w_id, c->c_d_id, c->c_id);
     Insert(trans, c_pri_key, c);
+
+    // maintain aux table (TODO: use a data structure to maintain "mid-position" customer)
+    char c2_key[prikey_len_c2];
+    Get_prikey_c2(c2_key, c->c_w_id, c->c_d_id, c->c_last);
+    Insert(trans, c2_key, c);
 }
 void Insert_item(tx_trans_t* trans, item_t* i)
 {
@@ -140,6 +192,12 @@ void Insert_order(tx_trans_t* trans, order_t* o)
     char o_pri_key[prikey_len_order];
     Get_prikey_order(o_pri_key, o->o_w_id, o->o_d_id, o->o_id);
     Insert(trans, o_pri_key, o);
+
+    // aux table
+    char o2_key[prikey_len_o2];
+    Get_prikey_o2(o2_key, o->o_w_id, o->o_d_id, o->o_c_id);
+    int* o2_o_id = new(int);  *o2_o_id = o->o_id;
+    Insert(trans, o2_key, o2_o_id);  // must be the new largest o_id
 }
 void Insert_orderline(tx_trans_t* trans, orderline_t* ol)
 {
@@ -158,6 +216,19 @@ void Insert_neworder(tx_trans_t* trans, neworder_t* no)
     char no_pri_key[prikey_len_neworder];
     Get_prikey_neworder(no_pri_key, no->no_w_id, no->no_d_id, no->no_o_id);
     Insert(trans, no_pri_key, no);
+
+    // aux table
+    char no2_key[prikey_len_no2];
+    Get_prikey_no2(no2_key, no->no_w_id, no->no_d_id);
+
+    neworder_t* no;
+    Select(trans, no2_key, &no);
+    if (no != NULL) return;
+    // Orders and neworders must come with increasing o_id,
+    //  so this neworder must not be the min neworder in this (w_id, d_id)
+    
+    int* no2_o_id = new(int); *no2_o_id = no->no_o_id;
+    Insert(trans, no2_key, no2_o_id);
 }
 void Insert_history(tx_trans_t* trans, history_t* h)
 {
@@ -166,13 +237,6 @@ void Insert_history(tx_trans_t* trans, history_t* h)
     Insert(trans, h_pri_key, h);
 }
 
-#define Insert_trans(ctx, p) \
-    {\
-        tx_trans_t* trans = tx_trans_create(ctx);\
-        tx_trans_init(ctx, trans);\
-        Insert_T(trans, p);\
-        tx_trans_commit(trans);\
-    }
 void Insert_warehouse_trans(tx_ctx_t* ctx, warehouse_t* w)
 {
     tx_trans_t* trans = tx_trans_create(ctx);  tx_trans_init(ctx, trans);
