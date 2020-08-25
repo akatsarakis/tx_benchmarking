@@ -34,6 +34,10 @@
 
 #include <stdint.h>
 
+
+#define TX_ADDR_NULL         0
+typedef uint64_t tx_addr;
+
 /////////////////////////
 /// Enums
 ////////////////////////
