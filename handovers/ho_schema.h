@@ -15,6 +15,8 @@
 // ~~~ eNodeB (base station) context
 
 #define MME_ENB_MAP_SCTP_TABLE			"mme_enb_m_sctp"
+// KEY is sctp.sctp_idx
+// VAL mme_enodeb_t
 
 typedef struct _mme_enodeb_list_slot_t {
     uint8_t data0[4];
@@ -36,12 +38,14 @@ typedef struct _mme_enodeb_list_slot_t {
 
 #define MME_ENB_UE_CONTEXT_TABLE		"mme_enb_ue_ctx"
 
+// KEY of a UE ctx on an eNodeB
 typedef struct {
     uint32_t enodeb_idx; // matches sctp_idx
     uint32_t enodeb_s1ap_id; // matches enb.id
 } mme_enodeb_ue_context_id_t;
 
 
+// VALUE of a UE ctx on an eNodeB
 typedef struct _mme_enodeb_ue_context_list_t_slot {
     uint8_t data1[8];
     tx_addr tx_mme_session; // (addr) key of an mme_session
@@ -53,7 +57,9 @@ typedef struct _mme_enodeb_ue_context_list_t_slot {
 
 #define MME_SESSION_TABLE               "mme_table_t"
 #define MME_SESSION_MAP_MS1APID_TABLE   "mme_map_ms1apid_t"
-
+// KEY (MME_SESSION_TABLE): p_mme_session->s1ap.primary.mme.id
+// KEY (MME_SESSION_MAP_MS1APID_TABLE): p_mme_session->mme_index
+// VAL (BOTH TABLES): pointer to mme_session_t
 
 typedef struct _mme_s1ap_context_t {
     uint32_t sctp_idx; // for simplicity we use the same as enb_id
@@ -70,7 +76,7 @@ typedef struct _mme_s1ap_context_t {
 
 
 typedef struct _mme_session_t {
-    uint32_t mme_id;
+    uint32_t mme_index;
 
     struct {
         mme_s1ap_context_t primary;
