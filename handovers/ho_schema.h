@@ -6,7 +6,7 @@
 // (we only keep them to incur the overhead of object-size during replication)
 // the same holds for fields named otherwise but also have an //unused comment
 
-// Info about tables
+// Info about tables (see right below each table define for their keys/values)
 // MME_SESSION_MAP_MS1APID_TABLE --> get UE based on MME UE S1AP ID (default)
 // MME_SESSION_TABLE             --> get UE based on SGW (secondary)
 // MME_ENB_MAP_SCTP_TABLE        --> get ENODB
@@ -46,7 +46,7 @@ typedef struct {
 
 
 // VALUE of a UE ctx on an eNodeB
-typedef struct _mme_enodeb_ue_context_list_t_slot {
+typedef struct {
     uint8_t data1[8];
     tx_addr tx_mme_session; // (addr) key of an mme_session
 } mme_enodeb_ue_context_t;
@@ -61,7 +61,7 @@ typedef struct _mme_enodeb_ue_context_list_t_slot {
 // KEY (MME_SESSION_MAP_MS1APID_TABLE): p_mme_session->mme_index
 // VAL (BOTH TABLES): pointer to mme_session_t
 
-typedef struct _mme_s1ap_context_t {
+typedef struct {
     uint32_t sctp_idx; // for simplicity we use the same as enb_id
 
     struct {
@@ -75,7 +75,7 @@ typedef struct _mme_s1ap_context_t {
 } mme_s1ap_context_t;
 
 
-typedef struct _mme_session_t {
+typedef struct {
     uint32_t mme_index;
 
     struct {
