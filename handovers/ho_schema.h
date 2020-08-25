@@ -143,9 +143,10 @@ int mme_session_deactivate(tx_ctx_t *tx_ctx, uint32_t ue_id);
 // dst_enb_idx - index of the destination eNodeB
 int mme_handover_start(tx_ctx_t *tx_ctx, uint32_t ue_id, uint32_t dst_enb_id);
 
-// get phone + dst eNodeB,
-// insert new session to dst eNodeB
-// set phone (dst eNodeB info in secondary ctx)
+// get phone [MME_SESSION_MAP_MS1APID_TABLE]
+// dst eNodeB [only tx accessing MME_ENB_MAP_SCTP_TABLE]
+// insert new session to dst eNodeB [MME_ENB_UE_CONTEXT_TABLE]
+// set phone (dst eNodeB info in secondary ctx) [MME_SESSION_MAP_MS1APID_TABLE]
 
 
 
@@ -154,9 +155,9 @@ int mme_handover_start(tx_ctx_t *tx_ctx, uint32_t ue_id, uint32_t dst_enb_id);
 //    (we keep a separate table but keep all values the same)
 int mme_handover_finish(tx_ctx_t *tx_ctx, uint32_t sgw_ue_id);
 
-// Get ue_id from secondary sgw_ue_id then get phone
+// Get ue_id from secondary sgw_ue_id [MME_SESSION_TABLE] then get phone
 // Delete UE context from old eNodeB [MME_ENB_UE_CONTEXT_TABLE]
-// [Skip the next step for now --> assuming a single MME here]
-//      If primary != secondary MME ID
-//          Delete old (primary) MME ID + Insert new (secondary) MME ID
-// Set phone (upd primary & secondary info --> primary = secondary & secondary = 0)
+//~ [Skip the next step for now --> assuming a single MME here]
+//~     If primary != secondary MME ID
+//~          Delete old (primary) MME ID + Insert new (secondary) MME ID
+// Set phone (upd primary & secondary info --> primary = secondary & secondary = 0) [MME_SESSION_MAP_MS1APID_TABLE]
