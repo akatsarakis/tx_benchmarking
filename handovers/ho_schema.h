@@ -6,6 +6,12 @@
 // (we only keep them to incur the overhead of object-size during replication)
 // the same holds for fields named otherwise but also have an //unused comment
 
+// Info about tables
+// MME_SESSION_MAP_MS1APID_TABLE --> get UE based on MME UE S1AP ID (default)
+// MME_SESSION_TABLE             --> get UE based on SGW (secondary)
+// MME_ENB_MAP_SCTP_TABLE        --> get ENODB
+// MME_ENB_UE_CONTEXT_TABLE      --> active UEs on ENODEB
+
 // ~~~ eNodeB (base station) context
 
 #define MME_ENB_MAP_SCTP_TABLE			"mme_enb_m_sctp"
