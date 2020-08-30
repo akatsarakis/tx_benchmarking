@@ -35,7 +35,6 @@ void trans_new_order(tx_ctx_t* ctx)
     //  W_TAX, the warehouse tax rate, is retrieved.
     
     district_t* d; Select_district(trans, w_id, d_id, &d);
-    Insert_district(trans, d);
     // Note that we want to do an update here rather than an insert. But the backend
     //  only provides set() that fulfills both the insert and the update action.
     //  Do we need to add a get() before set() to tell between these two actions???
