@@ -112,7 +112,7 @@ def main():
     # 2 * thread_tot * ue_moving_per_thread: number of txs taken by activation and deactivation of moving UEs
 
     ## generate trace
-    fp = [open("tx_thread%d.csv" % i, "w") for i in range(thread_tot)]
+    fp = [open("tx_thread%02d.csv" % i, "w") for i in range(thread_tot)]
     fp_params = open("tx_params.csv", "w")  # file pointer that parameters print to
     remote_handovers_lim = math.floor(tx_tot * p_handovers * p_remote + 1e-6)
     # remaining number of remote handovers
@@ -138,7 +138,8 @@ def main():
         for ue_id in range((thread_id+1) * ue_per_thread - ue_moving_per_thread, (thread_id+1) * ue_per_thread):
             enb_id = ue_home_enb_table[ue_id]
             # first time activating this UE: home_enb is preset
-            fp[thread_id].write('a, %d, %d\n' % (ue_id, enb_id))
+            # fp[thread_id].write('a, %d, %d\n' % (ue_id, enb_id))
+            fp[thread_id].write('0, %d, %d\n' % (ue_id, enb_id))
 
     # Phase 2: Normal generate
     for tx_no in range(thread_tot * ue_moving_per_thread, tx_tot):
@@ -174,7 +175,8 @@ def main():
 
             ue_home_enb_table[ue_id] = dst_enb_id
             ue_home_thread_table[ue_id] = thread_id
-            fp[thread_id].write('h, %d, %d\n' % (ue_id, dst_enb_id))
+            # fp[thread_id].write('h, %d, %d\n' % (ue_id, dst_enb_id))
+            fp[thread_id].write('2, %d, %d\n' % (ue_id, dst_enb_id))
             # h: (start-)handover
             # For now we don't consider finish handover
 
@@ -194,8 +196,9 @@ def main():
                     # dst_enb cannot be home_enb itself
 
                 ue_home_enb_table[ue_id] = dst_enb_id
-                fp[ue_home_thread].write('h, %d, %d\n' % (ue_id, dst_enb_id))
-            
+                # fp[ue_home_thread].write('h, %d, %d\n' % (ue_id, dst_enb_id))
+                fp[ue_home_thread].write('2, %d, %d\n' % (ue_id, dst_enb_id))
+
             else:  # activate/deactivate UE
                 act_type = 1 if bool(ue_inactive_set) == False \
                     or (bool(ue_active_set) == True and random.random() < tx_no / tx_tot) \
@@ -215,8 +218,9 @@ def main():
                     ue_home_enb_table[ue_id] = -1
 
                     ue_home_thread = ue_home_thread_table[ue_id]
-                    fp[ue_home_thread].write('d, %d\n' % ue_id)
-                
+                    # fp[ue_home_thread].write('d, %d\n' % ue_id)
+                    fp[ue_home_thread].write('1, %d\n' % ue_id)
+
                 else:  # activate UE
                     ue_id = random.sample(ue_inactive_set, 1)[0]  # ue_id = ue_inactive_set.pop()
                     ue_inactive_set.remove(ue_id)
@@ -228,7 +232,8 @@ def main():
                     # ue is inactive but home_enb is set: first time activating this UE
 
                     ue_home_enb_table[ue_id] = enb_id
-                    fp[ue_home_thread].write('a, %d, %d\n' % (ue_id, enb_id))
+                    # fp[ue_home_thread].write('a, %d, %d\n' % (ue_id, enb_id))
+                    fp[ue_home_thread].write('0, %d, %d\n' % (ue_id, enb_id))
 
     # Because in the last part (1~5%) of phase 2, all UEs tend to be deactivated,
     #  this part of the trace is composed of 'a; d; a; d', and local handovers
@@ -252,18 +257,21 @@ def main():
             dst_enb_id = ue_preset_enb_table[ue_id]
             ue_home_enb_table[ue_id] = dst_enb_id
             ue_home_thread_table[ue_id] = thread_id
-            fp[thread_id].write('h, %d, %d\n' % (ue_id, dst_enb_id))
-    
+            # fp[thread_id].write('h, %d, %d\n' % (ue_id, dst_enb_id))
+            fp[thread_id].write('2, %d, %d\n' % (ue_id, dst_enb_id))
+
     for thread_id in range(0, thread_tot):
         for ue_id in range((thread_id+1) * ue_per_thread - ue_moving_per_thread, \
                             (thread_id+1) * ue_per_thread):
-            fp[thread_id].write('d, %d\n' % ue_id)
+            # fp[thread_id].write('d, %d\n' % ue_id)
+            fp[thread_id].write('1, %d\n' % ue_id)
 
     while bool(ue_active_set) == True:
         ue_id = random.sample(ue_active_set, 1)[0]  # ue_id = ue_active_set.pop()
         ue_active_set.remove(ue_id)
         ue_home_thread = ue_home_thread_table[ue_id]
-        fp[ue_home_thread].write('d, %d\n' % ue_id)
+        # fp[ue_home_thread].write('d, %d\n' % ue_id)
+        fp[ue_home_thread].write('1, %d\n' % ue_id)
 
     fp_params.close()
     for each_fp in fp:
