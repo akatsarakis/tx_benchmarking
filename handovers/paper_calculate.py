@@ -38,28 +38,35 @@ ue_pos = [(x_len / sqrt_ue_tot * cur_x, y_len / sqrt_ue_tot * cur_y)
             for cur_y in range(math.floor(sqrt_ue_tot + 0.5))]
             # Assume initial positions are uniformly random
 node_tot = ARGS.node_tot
-shard_x_len = x_len / node_tot
-shard_y_len = y_len
-# assume eNBs are arranged in a single row
+shard_len = math.sqrt(x_len * y_len / node_tot)
+# assume each shard is a perfect square, and area of all shards add up to the whole area
 
-trip_remote_cnt = 0
-# trip_len_stats = [0] * 301  # debug
+handover_cnt = 0
+handover_remote_cnt = 0
 for cur_trip in range(trip_tot):
-    trip_len = trip_len_gen.rvs(size=1)[0]
-    # trip_len_stats[int(trip_len)] += 1  # debug
-    trip_dir = random.random() * 2 * math.pi  # assume trip directions are uniformly random distributed
-    trip_vector = (trip_len * math.cos(trip_dir), trip_len * math.sin(trip_dir))
-
     trip_ue = random.randint(0, ue_tot-1)
-    x0 = ue_pos[trip_ue][0]
-    y0 = ue_pos[trip_ue][1]
-    x1 = x0 + trip_vector[0]
-    y1 = y0 + trip_vector[1]
-    ue_pos[trip_ue] = (x1, y1)
+    trip_len = trip_len_gen.rvs(size=1)[0]
+    trip_dir = random.random() * 2 * math.pi  # assume trip directions are uniformly random distributed
 
-    if x1 // shard_x_len != x0 // shard_x_len or y1 // shard_y_len != y0 // shard_y_len:  # crossed shard boundary
-        # print(x0, x1, y0, y1)  # debug
-        trip_remote_cnt += 1
+    for_range = range(math.ceil(trip_len))
+    for cur_step in for_range:
+        if trip_len < 1:
+            trip_vector = (trip_len * math.cos(trip_dir), trip_len * math.sin(trip_dir))
+            trip_len = 0
+        else:
+            trip_vector = (1 * math.cos(trip_dir), 1 * math.sin(trip_dir))
+            trip_len -= 1
+        # divide a trip into handovers of 1km each (except the last one)
 
-# print(trip_len_stats)  # debug
-print(trip_remote_cnt / trip_tot)
+        x0 = ue_pos[trip_ue][0]
+        y0 = ue_pos[trip_ue][1]
+        x1 = x0 + trip_vector[0]
+        y1 = y0 + trip_vector[1]
+        ue_pos[trip_ue] = (x1, y1)
+
+        handover_cnt += 1
+        if x1 // shard_len != x0 // shard_len or y1 // shard_len != y0 // shard_len:  # crossed shard boundary
+            # print(x0, y0, x1, y1)  # debug
+            handover_remote_cnt += 1
+
+print(handover_remote_cnt / handover_cnt)
