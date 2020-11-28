@@ -8,14 +8,15 @@ os.environ["METIS_DLL"] = "/usr/local/lib/libmetis.so"
 import metis
 
 dg = nx.MultiDiGraph()
-fp = open("venmo_txes_sampled.csv", "r") # , encoding='utf-8')
+fp = open("venmo_txes_sampled_2000000.csv", "r") # , encoding='utf-8')
 csv_file = csv.reader(fp)
 for row in csv_file:
     dg.add_edge(row[0], row[1])
+print(nx.info(dg))
 fp.close()
 
-(edgecuts, parts) = metis.part_graph(dg, 6)  # num of shards
+(edgecuts, parts) = metis.part_graph(dg, 3)  # num of shards
 
-fp = open("clustered_venmo.txt", "w")
+fp = open("clustered_venmo_metis.txt", "w")
 print(parts, file=fp)
 fp.close()

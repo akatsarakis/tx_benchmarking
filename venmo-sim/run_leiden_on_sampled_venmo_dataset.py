@@ -35,6 +35,6 @@ part = leidenalg.find_partition(G, leidenalg.ModularityVertexPartition)
 # print(part)  # debug
 
 # save result into file
-fp = open("clustered_venmo_dataset.txt", "w")
+fp = open("cleaned_normalized_clustered_venmo_dataset.txt", "w")
 print(part, file=fp)
 fp.close()

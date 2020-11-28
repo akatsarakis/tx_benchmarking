@@ -89,7 +89,7 @@ def takeThird(elem):
     # This function is used to sort txes; here we
     #  assume dates can be sorted in string sort manner
 
-fp = open("clustered_venmo_dataset_txes.csv", "r") # , encoding='utf-8')
+fp = open("venmo_dataset_normalized_shorted.csv", "r") # , encoding='utf-8')
 csv_file = csv.reader(fp)
 all_tx = []
 for row in csv_file:
