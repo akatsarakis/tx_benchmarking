@@ -20,7 +20,7 @@ node_tot = ARGS.node_tot
 
 ## first, read in total number of vertices and clusters
 ##  from the first line of the input file
-fp = open("clustered_venmo_dataset_2000000.txt", "r") # , encoding='utf-8')
+fp = open("clustered_venmo_dataset_3000000.txt", "r") # , encoding='utf-8')
 firstline_str = fp.readline()
 firstline_pattern = re.compile(r"Clustering with (\d+) elements and (\d+) clusters")
 firstline_match = firstline_pattern.match(firstline_str)
@@ -64,7 +64,9 @@ while curline_str:
 cur_node = 0
 cur_node_size = 0
 for cur_cluster in range(cluster_tot):
-    if cur_node_size + cluster_size[cur_cluster] / 2 > expected_node_size and cur_node_size != 0:
+    if cur_node + 1 < node_tot \
+     and cur_node_size + cluster_size[cur_cluster] / 2 > expected_node_size \
+     and cur_node_size != 0:
         # should bind to the next node, unless this cluster is the first cluster on the current node
         cur_node += 1
         cur_node_size = 0
@@ -78,7 +80,7 @@ fp.close()
 print('-- Binding result:')
 node_size = [0] * node_tot
 for cur_vertex in range(vertex_tot):
-    node_size[vertex_node_no[cur_vertex]] += 1
+        node_size[vertex_node_no[cur_vertex]] += 1
 for cur_node in range(node_tot):
     print('Shard %d size:' % cur_node, node_size[cur_node])
 
@@ -94,7 +96,7 @@ csv_file = csv.reader(fp)
 all_tx = []
 for row in csv_file:
     all_tx.append([int(row[0]), int(row[1]), row[2]])
-all_tx = all_tx[:2000000]  # we only used the first 2000000 lines of txes
+all_tx = all_tx[:3000000]  # we only used the first 3000000 lines of txes
 all_tx.sort(key=takeThird)
 fp.close()
 
