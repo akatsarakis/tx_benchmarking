@@ -20,7 +20,7 @@ node_tot = ARGS.node_tot
 
 ## first, read in total number of vertices and clusters
 ##  from the first line of the input file
-fp = open("clustered_venmo_dataset_3000000.txt", "r") # , encoding='utf-8')
+fp = open("clustered_venmo_dataset_1000000.txt", "r") # , encoding='utf-8')
 firstline_str = fp.readline()
 firstline_pattern = re.compile(r"Clustering with (\d+) elements and (\d+) clusters")
 firstline_match = firstline_pattern.match(firstline_str)
@@ -96,7 +96,7 @@ csv_file = csv.reader(fp)
 all_tx = []
 for row in csv_file:
     all_tx.append([int(row[0]), int(row[1]), row[2]])
-all_tx = all_tx[:3000000]  # we only used the first 3000000 lines of txes
+all_tx = all_tx[:1000000]  # we only used the first 2000000 lines of txes
 all_tx.sort(key=takeThird)
 fp.close()
 

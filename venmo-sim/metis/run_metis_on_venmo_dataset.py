@@ -4,11 +4,10 @@
 import csv
 import networkx as nx
 import os
-os.environ["METIS_DLL"] = "/usr/local/lib/libmetis.so"
 import metis
 
 dg = nx.MultiDiGraph()
-fp = open("venmo_txes_sampled_2000000.csv", "r") # , encoding='utf-8')
+fp = open("venmo_hybrid_algo_metis_part.csv", "r") # , encoding='utf-8')
 csv_file = csv.reader(fp)
 for row in csv_file:
     dg.add_edge(row[0], row[1])
