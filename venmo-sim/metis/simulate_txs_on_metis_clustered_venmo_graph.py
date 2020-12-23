@@ -1,3 +1,5 @@
+# read the result of Metis' stand-alone program (gpmetis) and do simulation
+
 import argparse
 import csv
 
@@ -19,7 +21,7 @@ def takeThird(elem):
     return elem[2]
 # assume dates can be sorted in string sort manner
 
-fp = open("venmo_txes_sampled_2000000.csv", "r") # , encoding='utf-8')
+fp = open("../venmo_dataset_normalized_shorted.csv", "r")
 csv_file = csv.reader(fp)
 all_tx = []
 for row in csv_file:
@@ -29,8 +31,9 @@ fp.close()
 
 
 # read clustering result of the graph
-fp = open("clustered_venmo_metis.txt", "r") # , encoding='utf-8')
-vertex_node_no = eval(fp.read())
+fp = open("clustered_venmo_gpmetis.txt", "r")
+# vertex_node_no = eval(fp.read())  # pymetis
+vertex_node_no = [eval(line) for line in fp.readlines()]  # gpmetis
 vertex_tot = len(vertex_node_no)
 
 
