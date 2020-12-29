@@ -31,7 +31,9 @@ fp.close()
 
 
 # read clustering result of the graph
-fp = open("clustered_venmo_gpmetis.txt", "r")
+#fp = open("clustered_venmo_gpmetis.txt", "r")
+fp = open("venmo_dataset_metis_format.txt.part." + str(node_tot), "r")
+
 # vertex_node_no = eval(fp.read())  # pymetis
 vertex_node_no = [eval(line) for line in fp.readlines()]  # gpmetis
 vertex_tot = len(vertex_node_no)
