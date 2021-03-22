@@ -54,12 +54,12 @@ void trans_new_order(tx_ctx_t* ctx)
 
     order_t* o = new(order_t);
     o->o_w_id = w_id; o->o_d_id = d_id; o->o_id = d->d_next_o_id;
-    o->o_c_id = c_id; o->o_all_local = 1; o->o_carrier_id;
-    *o->o_entry_d = cur_local_time();
+    o->o_c_id = c_id; o->o_all_local = 1; o->o_carrier_id = -1;
+    o->o_entry_d = new(struct tm); *o->o_entry_d = cur_local_time();  // ??? can be optimized
     // A new row is inserted into both the NEW-ORDER table and the ORDER table to
     //  reflect the creation of the new order. O_CARRIER_ID is set to a null value.
     // If the order includes only home order-lines, then O_ALL_LOCAL is set to 1,
-    //  otherwise O_ALL_LOCAL is set to 0.
+    //  otherwise O_ALL_LOCAL is set to 0. (???)
 
     d->d_next_o_id++; Insert_district(trans, d);
     
@@ -80,18 +80,20 @@ void trans_new_order(tx_ctx_t* ctx)
         ol->ol_i_id = ol_i_id; ol->ol_supply_w_id = ol_supply_w_id;
         ol->ol_quantity = ol_quantity;
 
-        if (ol_i_id == 0)
-        {
-            puts("invalid ol_i_id in new order transaction");
-            tx_trans_abort_n_clear(trans); return;
-        }
-        // If I_ID has an unused value, a "not-found" condition is signaled,
-        //  resulting in a rollback of the database transaction.
-
         item_t* i; Select_item(trans, ol_i_id, &i);
         // The row in the ITEM table with matching I_ID (equals OL_I_ID) is
         //  selected and I_PRICE, the price of the item, I_NAME, the name of
         //  the item, and I_DATA are retrieved.
+        // According to spec, a Select in the ITEM table must be done whether or not
+        //  the i_id is a null value. So we put this ahead of the following if clause.
+
+        if (ol_i_id == 0)
+        {
+            puts("invalid order-line item id (ol_i_id) in new order transaction");
+            tx_trans_abort_n_clear(trans); return;
+        }
+        // If I_ID has an unused value, a "not-found" condition is signaled,
+        //  resulting in a rollback of the database transaction.
 
         stock_t* s; Select_stock(trans, ol_supply_w_id, ol_i_id, &s);
         // The row in the STOCK table with matching S_I_ID (equals OL_I_ID) and S_W_ID (equals
@@ -105,7 +107,7 @@ void trans_new_order(tx_ctx_t* ctx)
         // S_QUANTITY is updated to (S_QUANTITY - OL_QUANTITY) + 91.
         
         s->s_ytd += ol_quantity; s->s_order_cnt += 1;
-        if (ol_supply_w_id != w_id) s->s_remote_cnt += 1;
+        if (ol_supply_w_id != w_id) { s->s_remote_cnt += 1; o->o_all_local = 0; }
         Insert_stock(trans, s);
         // S_YTD is increased by OL_QUANTITY and S_ORDER_CNT is incremented by 1.
         // If the order-line is remote, then S_REMOTE_CNT is incremented by 1.
@@ -116,7 +118,7 @@ void trans_new_order(tx_ctx_t* ctx)
 
         brand_generic[k] = strstr(i->i_data, "original") && strstr(s->s_data, "original") ? 'B' : 'G';
         // The strings in I_DATA and S_DATA are examined. If they both include the
-        //  string "ORIGINAL", the brandgeneric field for that item is set to "B",
+        //  string "ORIGINAL", the brand-generic field for that item is set to "B",
         //  otherwise, the brand-generic field is set to "G".
         // This information is intended for terminal display
 
@@ -135,7 +137,7 @@ void trans_new_order(tx_ctx_t* ctx)
     // This information is intended for terminal display
     
     Insert_order(trans, o);
-    tx_trans_commit(trans);  tx_trans_destroy(trans);
+    tx_trans_commit(trans);  tx_trans_destroy(trans);  // ??? destroy a tx every time?
     // The database transaction is committed, unless it has been rolled back
     //  as a result of an unused value for the last item number.
 
@@ -171,27 +173,25 @@ void trans_payment(tx_ctx_t* ctx)
         fscanf(fp, "%d", &c_id);
         Select_customer(trans, c_w_id, c_d_id, c_id, &c);
     }
-    c->c_balance += h_amount;
+    c->c_balance -= h_amount;
     c->c_ytd_payment += h_amount;
     c->c_payment_cnt++;
 
     char h_data[101];
     strcpy(h_data, w->w_name); strcat(h_data, "    "); strcat(h_data, d->d_name);
-    char c_data[501] = {}, c_new_data[101];
+    char c_data[501] = {}, c_new_data[501] = {};
     if (strstr(c->c_credit, "BC"))
     {
         strcpy(c_data, c->c_data);
         sprintf(c_new_data, "| %4d %2d %4d %2d %4d $%7.2f %12s %24s",
-        c_id, c_d_id, c_w_id, d_id, w_id, h_amount, asc_local_time(), h_data);
-        strncat(c_new_data, c_data, 500-strlen(c_new_data));
+        c_id, c_d_id, c_w_id, d_id, w_id, h_amount, asc_local_time(), h_data);  // ???
+        strncat(c_new_data, c_data, 500-strlen(c_new_data));  // padding???
         strcpy(c->c_data, c_new_data);
     }
     Insert_customer(trans, c);
 
     history_t* h = new(history_t); h->h_amount = h_amount;
-    strncpy(h->h_data, w->w_name, 10); h->h_data[10]='\0';
-    strncat(h->h_data, d->d_name, 10);
-    h->h_data[20] = h->h_data[21] = h->h_data[22] = h->h_data[23] = ' ';
+    strcpy(h->h_data, h_data);
     h->h_c_d_id = c_d_id; h->h_c_w_id = c_w_id; h->h_c_id = c_id; h->h_d_id = d_id;
     h->h_w_id = w_id;
     h->h_date = new(struct tm); *h->h_date = cur_local_time();
@@ -212,7 +212,7 @@ void trans_order_status(tx_ctx_t* ctx)
     if (byname == 2)
     {
         fscanf(fp, "%s", c_last);
-        Select_customer_byname(trans, c_last, w_id, d_id, &c);
+        Select_customer_byname(trans, w_id, d_id, c_last, &c);
         c_id = c->c_id;
     }
     else {
@@ -278,13 +278,9 @@ int trans_delivery(tx_ctx_t* ctx, time_t created_time, int w_id, int o_carrier_i
             orderline_t* ol; Select_orderline(trans, w_id, d_id, no->no_o_id, k, &ol);
             if (ol == NULL) break;  // end of orderlines in this order
             ol->ol_delivery_d = new(struct tm); *ol->ol_delivery_d = cur_time;  // must be NULL before
+            o_ol_amount += ol->ol_amount;
             Insert_orderline(trans, ol);
         }
-        // The sum of all OL_AMOUNT is retrieved. (Omit)
-        //  EXEC SQL SELECT SUM(ol_amount) INTO :ol_total
-        //  FROM order_lie
-        //  WHERE ol_o_id = :no_o_id AND ol_d_id = :d_id
-        //  AND ol_w_id = :w_id;
 
         customer_t* c; Select_customer(trans, w_id, d_id, o->o_c_id, &c);
         c->c_balance += o_ol_amount;
@@ -297,6 +293,7 @@ int trans_delivery(tx_ctx_t* ctx, time_t created_time, int w_id, int o_carrier_i
 
     tx_trans_destroy(trans);
     fprintf(delivery_tx_result_fp, "Delivery tx completed time: %s\n", asc_local_time());
+    return num_skipped;
 }
 void trans_stock_level(tx_ctx_t* ctx)
 {

@@ -96,7 +96,7 @@ def gen_new_order(use_next_warehouse, file):
         file.write(' %d %d %d\n' % (ol_i_id, ol_supply_w_id, ol_quantity))
 
     # The order entry date (O_ENTRY_D) is generated within the SUT by
-    #  using the current system date and time. (Not implemented here)
+    #  using the current system date and time. (Not generated here)
 
 
 def gen_payment(use_next_warehouse, file):

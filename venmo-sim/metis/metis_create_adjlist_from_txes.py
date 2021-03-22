@@ -30,7 +30,7 @@ fp.close()
 # print(vertex_tot, edge_tot)
 
 
-fp = open("venmo_dataset_metis_format.txt", "w")
+fp = open("venmo_dataset_gpmetis_format.txt", "w")
 fmt = '001'  # This Metis param denotes that edges are weighted in this graph, while vertices aren't weighted and don't have sizes.
 print(vertex_tot, edge_tot, fmt, file=fp)
 for u in range(1, vertex_tot+1):

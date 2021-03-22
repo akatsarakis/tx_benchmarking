@@ -20,7 +20,7 @@ node_tot = ARGS.node_tot
 
 ## first, read in total number of vertices and clusters
 ##  from the first line of the input file
-fp = open("clustered_venmo_dataset_1000000.txt", "r") # , encoding='utf-8')
+fp = open("./results/clustered_venmo_dataset_7024852.txt", "r") # , encoding='utf-8')
 firstline_str = fp.readline()
 firstline_pattern = re.compile(r"Clustering with (\d+) elements and (\d+) clusters")
 firstline_match = firstline_pattern.match(firstline_str)
@@ -91,12 +91,12 @@ def takeThird(elem):
     # This function is used to sort txes; here we
     #  assume dates can be sorted in string sort manner
 
-fp = open("venmo_dataset_normalized_shorted.csv", "r") # , encoding='utf-8')
+fp = open("../venmo_dataset_normalized_shorted.csv", "r") # , encoding='utf-8')
 csv_file = csv.reader(fp)
 all_tx = []
 for row in csv_file:
     all_tx.append([int(row[0]), int(row[1]), row[2]])
-all_tx = all_tx[:1000000]  # we only used the first 2000000 lines of txes
+# all_tx = all_tx[:4000000]  # we only used the first 4000000 lines of txes
 all_tx.sort(key=takeThird)
 fp.close()
 

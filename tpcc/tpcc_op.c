@@ -3,7 +3,7 @@
 #include <stdio.h>
 #define new(T) malloc(sizeof(T))
 
-const int prikey_len_warehouse = 11;  // With 1 bit padding
+const int prikey_len_warehouse = 11;  // With 1 bit padding  // ??? scale of W?
 const int prikey_len_district  = 14;
 const int prikey_len_customer  = 19;
 const int prikey_len_item      = 8;
@@ -67,15 +67,16 @@ inline void Get_prikey_history(char* pri_key, int h_w_id, int h_d_id, int h_c_id
 }
 inline void Get_prikey_c2(char* pri_key, int c_w_id, int c_d_id, char* c_last)
 {
-    sprintf(pri_key, "c2%d,%d,%s", c_w_id, c_d_id, c_last);
+    sprintf(pri_key, "cl%d,%d,%s", c_w_id, c_d_id, c_last);
+    // cannot use 'c2' here because the '2' could be interpreted as part of c_w_id
 }
 inline void Get_prikey_o2(char* pri_key, int o_w_id, int o_d_id, int o_c_id)
 {
-    sprintf(pri_key, "o2%d,%d,%d", o_w_id, o_d_id, o_c_id);
+    sprintf(pri_key, "ol%d,%d,%d", o_w_id, o_d_id, o_c_id);
 }
 inline void Get_prikey_no2(char* pri_key, int no_w_id, int no_d_id)
 {
-    sprintf(pri_key, "no2%d,%d", no_w_id, no_d_id);
+    sprintf(pri_key, "nol%d,%d", no_w_id, no_d_id);
 }
 
 void Select_warehouse(tx_trans_t* trans, int w_id, warehouse_t** w)
@@ -139,6 +140,7 @@ void Select_customer_byname(tx_trans_t* trans, int c_w_id, int c_d_id, char* c_l
     Get_prikey_c2(c2_key, c_w_id, c_d_id, c_last);
     Select(trans, c2_key, &c_id);
     Select_customer(trans, c_w_id, c_d_id, *c_id, c);
+    // ??? where is the insertion?
 }
 void Select_latest_order(tx_trans_t* trans, int o_w_id, int o_d_id, int o_c_id, order_t** o)
 {

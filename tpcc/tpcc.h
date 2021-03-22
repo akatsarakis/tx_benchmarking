@@ -21,12 +21,15 @@ typedef struct warehouse_t
 } __attribute__((packed)) warehouse_t;
 
 // ???
+// scale of W? 
+
+// ???
 // Can simulate varchar with char[]? (I know in C++ we can use std::vector<char> but not in C)
 //  also, do we need padding on char array length? i.e., char[17] for varchar(16)
 
 // ???
 // Why do we use __attribute__((packed)), bit field or Neil field? Is it because we have
-//  stringent limit on memory use? (__attribute__((packed)) may in fact slow down the program...)
+//  stringent limit on memory use? (__attribute__((packed)) may even slow down the program...)
 // What is a Neil field? No information about Neil field on Google
 
 typedef struct district_t
@@ -60,7 +63,7 @@ typedef struct customer_t
     char c_state[3];
     char c_zip[10];
     char c_phone[17];
-    struct tm* c_since;
+    struct tm* c_since;  // datetime
     char c_credit[3];  // "GC" == good, "BC" == bad
     float c_credit_lim;  // numeric(12, 2) signed
     float c_discount;  // numeric(4, 4) signed
@@ -80,8 +83,8 @@ typedef struct history_t
     int h_c_w_id;  // 2*W unique IDs
     int8_t h_d_id;  // 20 unique IDs
     int h_w_id;  // 2*W unique IDs
-    struct tm* h_date;
-    float h_amount;  // numeric(6, 2)
+    struct tm* h_date;  // datetime
+    float h_amount;  // numeric(6, 2) signed
     char h_data[25];  // Miscellaneous information
     // foreign key (H_C_W_ID, H_C_D_ID, H_C_ID) references CUSTOMER(C_W_ID, C_D_ID, C_ID),
     // foreign key (H_W_ID, H_D_ID) references DISTRICT(D_W_ID, D_ID)
@@ -95,10 +98,10 @@ typedef struct order_t
     int8_t o_d_id;  // 20 unique IDs
     int o_w_id;  // 2*W unique IDs
     int o_c_id;  // 96,000 unique IDs
-    struct tm* o_entry_d;
-    int o_carrier_id; // 10 unique IDs or -1 (denotes null)
-    uint8_t o_ol_cnt; // numeric(2); Count of Order-Lines
-    uint8_t o_all_local; // numeric(1)
+    struct tm* o_entry_d;  // datetime
+    int8_t o_carrier_id; // 10 unique IDs or -1 (denotes null)
+    uint8_t o_ol_cnt; // numeric(2) unsigned; Count of Order-Lines
+    uint8_t o_all_local; // numeric(1) unsigned
     // primary key (O_W_ID, O_D_ID, O_ID),
     // foreign key (O_W_ID, O_D_ID, O_C_ID) references CUSTOMER(C_W_ID, C_D_ID, C_ID)
 } __attribute__((packed)) order_t;
@@ -117,7 +120,7 @@ typedef struct item_t
     int i_id;  // primary key; 200,000 unique IDs
     int i_im_id;  // 200,000 unique IDs; Image ID associated to Item
     char i_name[25];  // varchar(24)
-    float i_price;
+    float i_price;  // numeric(5, 2) unsigned
     char i_data[51];  // Brand information
 } __attribute__((packed)) item_t;
 
@@ -125,11 +128,11 @@ typedef struct stock_t
 {  // 100,000 populated per warehouse
     int s_i_id;  // 200,000 unique IDs
     int s_w_id;  // 2*W unique IDs
-    int s_quantity;  // numeric(4) signed
+    int8_t s_quantity;  // numeric(4) signed
     char s_dist[10][25]; // S_DIST_01 char(24), S_DIST_02 char(24), ..., S_DIST_10 char(24)
-    uint32_t s_ytd;  // numeric(8)
-    uint16_t s_order_cnt;  // numeric(4)
-    uint16_t s_remote_cnt;  // numeric(4)
+    uint32_t s_ytd;  // numeric(8) unsigned
+    uint16_t s_order_cnt;  // numeric(4) unsigned
+    uint16_t s_remote_cnt;  // numeric(4) unsigned
     char s_data[51];  // Make information
     // primary key (S_W_ID, S_I_ID),
     // foreign key (S_W_ID) references WAREHOUSE(W_ID),
@@ -145,7 +148,7 @@ typedef struct orderline_t
     int ol_i_id;  // 200,000 unique IDs
     int ol_supply_w_id;  // 2*W unique IDs
     struct tm* ol_delivery_d;  // datetime or null
-    uint8_t ol_quantity;  // numeric(2)
+    uint8_t ol_quantity;  // numeric(2) unsigned
     float ol_amount;  // numeric(6, 2) signed
     char ol_dist_info[25];  // char(24)
     // primary key (OL_W_ID, OL_D_ID, OL_O_ID, OL_NUMBER),
@@ -168,7 +171,7 @@ void init_db_population(const int n_warehouse);
 
 static inline int Random(int l, int r)  // uniform, inclusive
 {
-    // ??? How to implement this function? (See the comments below)
+    // ??? Problematic. See the comments below
     if (r - l > RAND_MAX) return rand() / (double)RAND_MAX * (r-l) + l;
     // Due to the discrete nature of floating-point numbers, this may mean that
     //  some values will just never show up in your output stream.
@@ -192,8 +195,6 @@ static inline int nurand(int A, int x, int y)
 //   for C_ID, the range is [1 .. 3000] and  A = 1023
 //   for OL_I_ID, the range is [1 .. 100000] and A = 8191
 {
-    // const int a[3] = {255, 1023, 8191}, A = a[aa];
-
     int C = Random(0, A);
     // C is a run-time constant randomly chosen within [0 .. A] that
     //  can be varied without altering performance. The same C value,
